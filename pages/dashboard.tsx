@@ -2,58 +2,66 @@ import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { fmtMoney, fmtPercent } from '@/lib/utils';
+import { Package, DollarSign, TrendingUp, Archive } from 'lucide-react';
+
+interface Product {
+    id: string;
+    name: string;
+    sku: string;
+    unit_cost: number;
+    pvp: number;
+    stock: number;
+}
 
 const DashboardPage: React.FC = () => {
-    const [users, setUsers] = useState<any[]>([]);
+    const [products, setProducts] = useState<Product[]>([]);
     const [stats, setStats] = useState({
-        products: 0,
-        rawMaterials: 0,
-        operationalExpenses: 0,
+        totalProducts: 0,
+        inventoryValue: 0,
+        pvpValue: 0,
         averageMargin: 0,
     });
 
     useEffect(() => {
-        // Demo API call
-        const demoAPICall = async () => {
-            try {
-                // Create a demo user
-                const createRes = await fetch('/api/v1/users', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        name: 'Rafa',
-                        email: `rafa.${Date.now()}@test.com`
-                    }),
-                });
-
-                if (!createRes.ok) {
-                    console.error('Failed to create demo user:', createRes.statusText);
-                }
-
-                // Fetch users
-                const res = await fetch('/api/v1/users?limit=5&page=1');
-                if (!res.ok) {
-                    console.error('Failed to fetch users:', res.statusText);
-                    return;
-                }
-
-                const contentType = res.headers.get('content-type');
-                if (contentType && contentType.includes('application/json')) {
-                    const data = await res.json();
-                    setUsers(data.items || []);
-                }
-            } catch (error) {
-                console.error('Error fetching users:', error);
-            }
-        };
-
-        demoAPICall();
+        fetchProducts();
     }, []);
 
+    const fetchProducts = async () => {
+        try {
+            const res = await fetch('/api/v1/products');
+            if (!res.ok) {
+                console.error(`API error: ${res.status} ${res.statusText}`);
+                return;
+            }
+            const data = await res.json();
+            setProducts(data);
+
+            // Calculate stats
+            const totalProducts = data.length;
+            const inventoryValue = data.reduce((sum: number, p: Product) => sum + (p.unit_cost * p.stock), 0);
+            const pvpValue = data.reduce((sum: number, p: Product) => sum + (p.pvp * p.stock), 0);
+            const margins = data
+                .filter((p: Product) => p.pvp > 0)
+                .map((p: Product) => ((p.pvp - p.unit_cost) / p.pvp) * 100);
+            const averageMargin = margins.length > 0
+                ? margins.reduce((sum: number, m: number) => sum + m, 0) / margins.length
+                : 0;
+
+            setStats({
+                totalProducts,
+                inventoryValue,
+                pvpValue,
+                averageMargin,
+            });
+        } catch (error) {
+            console.error('Error fetching products:', error);
+        }
+    };
+
     const quickActions = [
-        { label: 'Nuevo Producto', href: '/productos', icon: '📦' },
-        { label: 'Nueva Venta', href: '/transacciones', icon: '💰' },
-        { label: 'Nueva Compra', href: '/transacciones', icon: '🛒' },
+        { label: 'Nuevo Producto', href: '/productos', icon: Package },
+        { label: 'Ver Productos', href: '/productos', icon: Archive },
+        { label: 'Transacciones', href: '/transacciones', icon: DollarSign },
     ];
 
     return (
@@ -67,19 +75,19 @@ const DashboardPage: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
                     <div className="card">
                         <h3>Productos Registrados</h3>
-                        <p className="value">{stats.products}</p>
+                        <p className="value">{stats.totalProducts}</p>
                     </div>
                     <div className="card">
-                        <h3>Materias Primas</h3>
-                        <p className="value">{stats.rawMaterials}</p>
+                        <h3>Valor Inventario (Costo)</h3>
+                        <p className="value">{fmtMoney(stats.inventoryValue)}</p>
                     </div>
                     <div className="card">
-                        <h3>Gastos Operativos (mes)</h3>
-                        <p className="value">{fmtMoney(stats.operationalExpenses)}</p>
+                        <h3>Valor Inventario (PVP)</h3>
+                        <p className="value">{fmtMoney(stats.pvpValue)}</p>
                     </div>
                     <div className="card">
                         <h3>Margen Bruto Promedio</h3>
-                        <p className="value">{fmtPercent(stats.averageMargin)}</p>
+                        <p className="value">{fmtPercent(stats.averageMargin / 100)}</p>
                     </div>
                 </div>
 
@@ -88,30 +96,47 @@ const DashboardPage: React.FC = () => {
                         <h2 className="text-xl font-bold mb-4 text-white">Acciones Rápidas</h2>
                         <div className="grid grid-cols-2 gap-4">
                             {quickActions.map((action, index) => (
-                                <Link href={action.href} key={index} className="p-4 bg-slate-700/50 border border-slate-600 rounded-lg hover:bg-slate-600/50 transition-colors flex flex-col items-center justify-center text-center gap-2 text-slate-300 hover:text-indigo-400">
-                                    <span className="text-2xl">{action.icon}</span>
-                                    <span className="font-medium text-sm">{action.label}</span>
+                                <Link
+                                    href={action.href}
+                                    key={index}
+                                    className="p-6 bg-surface-active border border-border rounded-2xl hover:bg-surface-hover hover:border-primary/30 transition-all flex flex-col items-center justify-center text-center gap-3 group"
+                                >
+                                    <action.icon size={32} className="text-primary group-hover:scale-110 transition-transform" />
+                                    <span className="font-semibold text-base text-white">{action.label}</span>
                                 </Link>
                             ))}
                         </div>
                     </div>
 
                     <div className="card">
-                        <h2 className="text-xl font-bold mb-4 text-white">Actividad Reciente</h2>
-                        <div className="space-y-4">
-                            <p className="text-slate-400 text-sm">No hay actividad reciente para mostrar.</p>
+                        <h2 className="text-xl font-bold mb-4 text-white flex items-center gap-2">
+                            <TrendingUp size={20} />
+                            Productos Recientes
+                        </h2>
+                        <div className="space-y-3">
+                            {products.slice(0, 5).map((product) => (
+                                <div
+                                    key={product.id}
+                                    className="flex justify-between items-center p-3 bg-slate-800/50 rounded-lg border border-slate-700"
+                                >
+                                    <div>
+                                        <p className="font-medium text-white">{product.name}</p>
+                                        <p className="text-xs text-slate-400">SKU: {product.sku}</p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-sm font-mono text-slate-300">{fmtMoney(product.pvp)}</p>
+                                        <p className="text-xs text-slate-500">Stock: {product.stock}</p>
+                                    </div>
+                                </div>
+                            ))}
+                            {products.length === 0 && (
+                                <p className="text-slate-400 text-sm text-center py-4">
+                                    No hay productos registrados aún.
+                                </p>
+                            )}
                         </div>
                     </div>
                 </div>
-
-                {users.length > 0 && (
-                    <div className="card mt-8">
-                        <h3 className="font-semibold mb-2 text-white">Demo API - Usuarios Recientes</h3>
-                        <pre className="text-sm bg-slate-900/50 border border-slate-700 p-4 rounded overflow-auto text-slate-300">
-                            {JSON.stringify(users, null, 2)}
-                        </pre>
-                    </div>
-                )}
             </div>
         </>
     );

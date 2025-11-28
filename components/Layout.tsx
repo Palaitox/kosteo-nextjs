@@ -1,6 +1,5 @@
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useState } from 'react';
 import { useRouter } from 'next/router';
-import Header from './Header';
 import Sidebar from './Sidebar';
 
 interface LayoutProps {
@@ -9,6 +8,7 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
     const router = useRouter();
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
     // Pages that don't need header/sidebar
     const noLayoutPages = ['/', '/login'];
@@ -18,15 +18,19 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         return <>{children}</>;
     }
 
+    const toggleSidebar = () => {
+        setIsSidebarCollapsed(!isSidebarCollapsed);
+    };
+
     return (
-        <>
-            <Sidebar />
+        <div className={`layout-wrapper ${isSidebarCollapsed ? 'collapsed' : ''}`}>
+            <Sidebar isCollapsed={isSidebarCollapsed} toggleSidebar={toggleSidebar} />
             <main className="main-layout">
                 <div className="k-container">
                     {children}
                 </div>
             </main>
-        </>
+        </div>
     );
 };
 

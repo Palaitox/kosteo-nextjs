@@ -26,7 +26,7 @@ const ProductSchema = new Schema<IProduct>(
 // Transform JSON to expose "id" instead of "_id"
 ProductSchema.set('toJSON', {
     versionKey: false,
-    transform: (_doc, ret) => {
+    transform: (_doc, ret: any) => {
         ret.id = ret._id?.toString();
         delete ret._id;
         return ret;

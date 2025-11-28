@@ -26,7 +26,7 @@ const UserSchema = new Schema<IUser>(
 // Transform JSON to expose "id" instead of "_id"
 UserSchema.set('toJSON', {
     versionKey: false,
-    transform: (_doc, ret) => {
+    transform: (_doc, ret: any) => {
         ret.id = ret._id?.toString();
         delete ret._id;
         return ret;
