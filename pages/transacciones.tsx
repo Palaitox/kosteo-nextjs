@@ -1,21 +1,127 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { fmtMoney } from '@/lib/utils';
-import { TrendingUp, TrendingDown, Plus, Eye, ShoppingCart, DollarSign, FileText } from 'lucide-react';
+import { TrendingUp, ShoppingCart, DollarSign, FileText, Plus, Pencil, Trash2, X } from 'lucide-react';
 
 type TransactionType = 'COMPRA' | 'VENTA';
 
+interface Compra {
+    id: string;
+    supplier: string;
+    product_name: string;
+    quantity: number;
+    unit_cost: number;
+    total_cost: number;
+    date: string;
+    status: 'Pendiente' | 'Completado' | 'Cancelado';
+}
+
 const TransaccionesPage: React.FC = () => {
-    const [activeTab, setActiveTab] = useState<TransactionType>('VENTA');
+    const [activeTab, setActiveTab] = useState<TransactionType>('COMPRA'); // Default to COMPRA for now
+    const [compras, setCompras] = useState<Compra[]>([]);
+    const [loading, setLoading] = useState(false);
 
-    // Mock data for now
-    const transactions = [
-        { id: 1, type: 'VENTA', date: '2023-11-27', description: 'Venta de Computador', amount: 1500000, status: 'Completado' },
-        { id: 2, type: 'COMPRA', date: '2023-11-26', description: 'Compra de Insumos', amount: 500000, status: 'Pagado' },
-        { id: 3, type: 'VENTA', date: '2023-11-25', description: 'Servicio de Mantenimiento', amount: 200000, status: 'Completado' },
-    ];
+    // Edit/Create states
+    const [editingCompra, setEditingCompra] = useState<Compra | null>(null);
+    const [formData, setFormData] = useState({
+        supplier: '',
+        product_name: '',
+        quantity: 0,
+        unit_cost: 0,
+        status: 'Pendiente' as 'Pendiente' | 'Completado' | 'Cancelado'
+    });
 
-    const filteredTransactions = transactions.filter(t => t.type === activeTab);
+    useEffect(() => {
+        if (activeTab === 'COMPRA') {
+            fetchCompras();
+        }
+    }, [activeTab]);
+
+    const fetchCompras = async () => {
+        try {
+            const res = await fetch('/api/v1/compras');
+            if (res.ok) {
+                const data = await res.json();
+                setCompras(data);
+            }
+        } catch (error) {
+            console.error('Error fetching compras:', error);
+        }
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        try {
+            const res = await fetch('/api/v1/compras', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData),
+            });
+            if (res.ok) {
+                fetchCompras();
+                setFormData({
+                    supplier: '',
+                    product_name: '',
+                    quantity: 0,
+                    unit_cost: 0,
+                    status: 'Pendiente'
+                });
+            } else {
+                alert('Error creando compra');
+            }
+        } catch (error) {
+            console.error('Error creating compra:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleUpdate = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingCompra) return;
+        setLoading(true);
+        try {
+            const res = await fetch(`/api/v1/compras/${editingCompra.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    supplier: editingCompra.supplier,
+                    product_name: editingCompra.product_name,
+                    quantity: editingCompra.quantity,
+                    unit_cost: editingCompra.unit_cost,
+                    status: editingCompra.status
+                }),
+            });
+            if (res.ok) {
+                fetchCompras();
+                setEditingCompra(null);
+            } else {
+                alert('Error actualizando compra');
+            }
+        } catch (error) {
+            console.error('Error updating compra:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!confirm('¿Estás seguro de eliminar esta compra?')) return;
+        try {
+            const res = await fetch(`/api/v1/compras/${id}`, { method: 'DELETE' });
+            if (res.ok) {
+                fetchCompras();
+            } else {
+                alert('Error eliminando compra');
+            }
+        } catch (error) {
+            console.error('Error deleting compra:', error);
+        }
+    };
+
+    // Calculate stats
+    const totalCompras = compras.reduce((sum, c) => sum + c.total_cost, 0);
 
     return (
         <>
@@ -28,10 +134,6 @@ const TransaccionesPage: React.FC = () => {
                         <FileText size={28} />
                         Transacciones
                     </h1>
-                    <button className="btn btn-primary flex items-center gap-2">
-                        <Plus size={18} />
-                        Nueva {activeTab === 'VENTA' ? 'Venta' : 'Compra'}
-                    </button>
                 </div>
 
                 {/* Tabs */}
@@ -52,77 +154,284 @@ const TransaccionesPage: React.FC = () => {
                     </button>
                 </div>
 
-                {/* Stats Cards (Contextual) */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                    <div className="card">
-                        <h3 className="flex items-center gap-2">
-                            <DollarSign size={16} />
-                            Total {activeTab === 'VENTA' ? 'Ventas' : 'Compras'} (Mes)
-                        </h3>
-                        <p className="value">{fmtMoney(activeTab === 'VENTA' ? 1700000 : 500000)}</p>
-                    </div>
-                    <div className="card">
-                        <h3>Transacciones</h3>
-                        <p className="value">{filteredTransactions.length}</p>
-                    </div>
-                    <div className="card">
-                        <h3>Promedio</h3>
-                        <p className="value">{fmtMoney(850000)}</p>
-                    </div>
-                </div>
-
-                {/* Table */}
-                <div className="card overflow-hidden p-0">
-                    <div className="overflow-x-auto">
-                        <table className="table">
-                            <thead>
-                                <tr>
-                                    <th>Fecha</th>
-                                    <th>Descripción</th>
-                                    <th>Estado</th>
-                                    <th className="text-right">Monto</th>
-                                    <th className="text-center">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filteredTransactions.map((t) => (
-                                    <tr key={t.id}>
-                                        <td className="font-mono text-sm">{t.date}</td>
-                                        <td className="font-medium">{t.description}</td>
-                                        <td>
-                                            <span className={`badge ${t.status === 'Completado' || t.status === 'Pagado' ? 'badge-success' : 'badge-warning'}`}>
-                                                {t.status}
-                                            </span>
-                                        </td>
-                                        <td className="text-right font-mono">{fmtMoney(t.amount)}</td>
-                                        <td className="text-center">
-                                            <button className="text-zinc-400 hover:text-white inline-flex items-center gap-1">
-                                                <Eye size={16} />
-                                                Ver
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                    {filteredTransactions.length === 0 && (
-                        <div className="p-12 text-center">
-                            {activeTab === 'VENTA' ? (
-                                <TrendingUp size={48} className="mx-auto text-zinc-600 mb-4" />
-                            ) : (
-                                <ShoppingCart size={48} className="mx-auto text-zinc-600 mb-4" />
-                            )}
-                            <p className="text-zinc-500 font-medium">
-                                No hay {activeTab.toLowerCase()}s registradas aún.
-                            </p>
-                            <p className="text-zinc-600 text-sm mt-1">
-                                Comienza agregando una nueva transacción
-                            </p>
+                {activeTab === 'COMPRA' ? (
+                    <div className="grid grid-cols-1 gap-8">
+                        {/* Stats */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="card">
+                                <h3 className="flex items-center gap-2">
+                                    <DollarSign size={16} />
+                                    Total Compras
+                                </h3>
+                                <p className="value">{fmtMoney(totalCompras)}</p>
+                            </div>
+                            <div className="card">
+                                <h3>Transacciones</h3>
+                                <p className="value">{compras.length}</p>
+                            </div>
                         </div>
-                    )}
-                </div>
+
+                        {/* Create Form */}
+                        <div className="card">
+                            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                                <Plus size={24} />
+                                Nueva Compra
+                            </h2>
+                            <form onSubmit={handleSubmit}>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                                    <div>
+                                        <label>Proveedor</label>
+                                        <input
+                                            type="text"
+                                            className="input"
+                                            required
+                                            value={formData.supplier}
+                                            onChange={(e) => setFormData({ ...formData, supplier: e.target.value })}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label>Producto</label>
+                                        <input
+                                            type="text"
+                                            className="input"
+                                            required
+                                            value={formData.product_name}
+                                            onChange={(e) => setFormData({ ...formData, product_name: e.target.value })}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label>Cantidad</label>
+                                        <input
+                                            type="number"
+                                            className="input"
+                                            required
+                                            min="1"
+                                            value={formData.quantity}
+                                            onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) || 0 })}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label>Costo Unitario</label>
+                                        <input
+                                            type="number"
+                                            className="input"
+                                            required
+                                            step="0.01"
+                                            value={formData.unit_cost}
+                                            onChange={(e) => setFormData({ ...formData, unit_cost: parseFloat(e.target.value) || 0 })}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label>Estado</label>
+                                        <select
+                                            className="input"
+                                            value={formData.status}
+                                            onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
+                                        >
+                                            <option value="Pendiente">Pendiente</option>
+                                            <option value="Completado">Completado</option>
+                                            <option value="Cancelado">Cancelado</option>
+                                        </select>
+                                    </div>
+                                    <div className="flex items-end">
+                                        <button
+                                            type="submit"
+                                            className="btn btn-primary w-full flex items-center justify-center gap-2"
+                                            disabled={loading}
+                                        >
+                                            <Plus size={18} />
+                                            {loading ? 'Guardando...' : 'Registrar Compra'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+
+                        {/* Table */}
+                        <div className="card overflow-hidden p-0">
+                            <div className="overflow-x-auto">
+                                <table className="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Fecha</th>
+                                            <th>Proveedor</th>
+                                            <th>Producto</th>
+                                            <th className="text-right">Cant.</th>
+                                            <th className="text-right">Costo Unit.</th>
+                                            <th className="text-right">Total</th>
+                                            <th>Estado</th>
+                                            <th className="text-center">Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {compras.map((c) => (
+                                            <tr key={c.id}>
+                                                <td className="font-mono text-sm">
+                                                    {new Date(c.date).toLocaleDateString()}
+                                                </td>
+                                                <td className="font-medium">{c.supplier}</td>
+                                                <td>{c.product_name}</td>
+                                                <td className="text-right">{c.quantity}</td>
+                                                <td className="text-right font-mono">{fmtMoney(c.unit_cost)}</td>
+                                                <td className="text-right font-mono font-bold">{fmtMoney(c.total_cost)}</td>
+                                                <td>
+                                                    <span className={`badge ${c.status === 'Completado' ? 'badge-success' :
+                                                            c.status === 'Cancelado' ? 'badge-error' : 'badge-warning'
+                                                        }`}>
+                                                        {c.status}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <button
+                                                            onClick={() => setEditingCompra(c)}
+                                                            className="text-blue-400 hover:text-blue-300 transition-colors p-1"
+                                                            title="Editar"
+                                                        >
+                                                            <Pencil size={18} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDelete(c.id)}
+                                                            className="text-red-400 hover:text-red-300 transition-colors p-1"
+                                                            title="Eliminar"
+                                                        >
+                                                            <Trash2 size={18} />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {compras.length === 0 && (
+                                <div className="p-12 text-center">
+                                    <ShoppingCart size={48} className="mx-auto text-zinc-600 mb-4" />
+                                    <p className="text-zinc-500 font-medium">No hay compras registradas</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                ) : (
+                    <div className="p-12 text-center card">
+                        <TrendingUp size={48} className="mx-auto text-zinc-600 mb-4" />
+                        <h3 className="text-xl font-bold mb-2">Módulo de Ventas</h3>
+                        <p className="text-zinc-500">Próximamente...</p>
+                    </div>
+                )}
             </div>
+
+            {/* Edit Modal */}
+            {editingCompra && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: 'rgba(0, 0, 0, 0.75)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1000,
+                    padding: '2rem'
+                }}>
+                    <div className="card" style={{ maxWidth: '600px', width: '100%', position: 'relative' }}>
+                        <button
+                            onClick={() => setEditingCompra(null)}
+                            style={{
+                                position: 'absolute',
+                                top: '1rem',
+                                right: '1rem',
+                                background: 'transparent',
+                                border: 'none',
+                                color: 'var(--text-secondary)',
+                                cursor: 'pointer',
+                                padding: '0.5rem'
+                            }}
+                        >
+                            <X size={24} />
+                        </button>
+                        <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
+                            <Pencil size={24} />
+                            Editar Compra
+                        </h2>
+                        <form onSubmit={handleUpdate} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label>Proveedor</label>
+                                <input
+                                    type="text"
+                                    className="input"
+                                    required
+                                    value={editingCompra.supplier}
+                                    onChange={(e) => setEditingCompra({ ...editingCompra, supplier: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label>Producto</label>
+                                <input
+                                    type="text"
+                                    className="input"
+                                    required
+                                    value={editingCompra.product_name}
+                                    onChange={(e) => setEditingCompra({ ...editingCompra, product_name: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label>Cantidad</label>
+                                <input
+                                    type="number"
+                                    className="input"
+                                    required
+                                    min="1"
+                                    value={editingCompra.quantity}
+                                    onChange={(e) => setEditingCompra({ ...editingCompra, quantity: parseInt(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div>
+                                <label>Costo Unitario</label>
+                                <input
+                                    type="number"
+                                    className="input"
+                                    required
+                                    step="0.01"
+                                    value={editingCompra.unit_cost}
+                                    onChange={(e) => setEditingCompra({ ...editingCompra, unit_cost: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div className="md:col-span-2">
+                                <label>Estado</label>
+                                <select
+                                    className="input"
+                                    value={editingCompra.status}
+                                    onChange={(e) => setEditingCompra({ ...editingCompra, status: e.target.value as any })}
+                                >
+                                    <option value="Pendiente">Pendiente</option>
+                                    <option value="Completado">Completado</option>
+                                    <option value="Cancelado">Cancelado</option>
+                                </select>
+                            </div>
+                            <div className="md:col-span-2 flex gap-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setEditingCompra(null)}
+                                    className="btn flex-1"
+                                    disabled={loading}
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="btn btn-primary flex-1"
+                                    disabled={loading}
+                                >
+                                    {loading ? 'Guardando...' : 'Guardar Cambios'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </>
     );
 };

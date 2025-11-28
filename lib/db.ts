@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+// Force recompile
 
 declare global {
     var mongooseGlobal: {

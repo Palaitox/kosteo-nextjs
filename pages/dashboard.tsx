@@ -93,16 +93,18 @@ const DashboardPage: React.FC = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div className="card">
-                        <h2 className="text-xl font-bold mb-4 text-white">Acciones Rápidas</h2>
-                        <div className="grid grid-cols-2 gap-4">
+                        <h2 className="text-xl font-bold mb-6 text-white">Acciones Rápidas</h2>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             {quickActions.map((action, index) => (
                                 <Link
                                     href={action.href}
                                     key={index}
-                                    className="p-6 bg-surface-active border border-border rounded-2xl hover:bg-surface-hover hover:border-primary/30 transition-all flex flex-col items-center justify-center text-center gap-3 group"
+                                    className="p-5 bg-gradient-to-br from-surface-active to-surface-hover border border-border rounded-xl hover:border-primary/40 transition-all flex flex-col items-center justify-center text-center gap-3 group hover:scale-105"
                                 >
-                                    <action.icon size={32} className="text-primary group-hover:scale-110 transition-transform" />
-                                    <span className="font-semibold text-base text-white">{action.label}</span>
+                                    <div className="p-3 bg-surface rounded-lg group-hover:bg-surface-active transition-colors">
+                                        <action.icon size={28} className="text-primary" />
+                                    </div>
+                                    <span className="font-semibold text-sm text-white">{action.label}</span>
                                 </Link>
                             ))}
                         </div>
