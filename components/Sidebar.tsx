@@ -1,7 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { LayoutDashboard, Package, CreditCard, ChevronLeft, ChevronRight, LogOut } from 'lucide-react';
+import { LayoutDashboard, Package, CreditCard, ChevronLeft, ChevronRight, LogOut, Sparkles } from 'lucide-react';
 import { storage } from '@/lib/storage';
 
 interface SidebarProps {
@@ -26,6 +26,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
         { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { href: '/productos', label: 'Productos', icon: Package },
         { href: '/transacciones', label: 'Transacciones', icon: CreditCard },
+        { href: '/asistente-kai', label: 'Asistente Kai', icon: Sparkles },
     ];
 
     return (
