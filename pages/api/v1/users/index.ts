@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import connectDB from '@/lib/db';
 import { User } from '@/models/User';
 import mongoose from 'mongoose';
+import { applyCors } from '@/lib/cors';
 
 // Helper functions
 function isValidId(id: string): boolean {
@@ -30,6 +31,10 @@ export default async function handler(
     req: NextApiRequest,
     res: NextApiResponse<UserResponse | UsersListResponse | ErrorResponse>
 ) {
+    if (applyCors(req, res)) {
+        return;
+    }
+
     await connectDB();
 
     const { method } = req;
